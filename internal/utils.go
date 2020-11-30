@@ -156,6 +156,10 @@ func ReverseSortMapKeysByMapIntValue(imap map[string]map[string]int, criterion s
 // DedupSortStrings removes duplicates and then sorts the given strings,
 // returning a new slice.
 func DedupSortStrings(istrings []string) []string {
+	if len(istrings) == 0 {
+		return istrings
+	}
+
 	elementmap := make(map[string]bool)
 	dedup := []string{}
 
@@ -176,6 +180,10 @@ func DedupSortStrings(istrings []string) []string {
 // the current home directory. If that cannot be determined, path is returned
 // unaltered.
 func TildaToHome(path string) string {
+	if path == "" {
+		return ""
+	}
+
 	home, herr := os.UserHomeDir()
 	if herr == nil && home != "" && strings.HasPrefix(path, "~/") {
 		path = strings.TrimLeft(path, "~/")
@@ -202,6 +210,10 @@ func ProcMeminfoMBs() (int, error) {
 // If path begins with a tilda, TildaToHome() is used to first convert the path
 // to an absolute path, in order to find the file.
 func PathToContent(path string) (string, error) {
+	if path == "" {
+		return "", &PathReadError{"", nil}
+	}
+
 	absPath := TildaToHome(path)
 
 	contents, err := ioutil.ReadFile(absPath)
