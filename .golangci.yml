@@ -56,6 +56,9 @@ issues:
     - path: clog.go
       linters:
         - gochecknoinits
+    - path: cert.go
+      linters:
+        - misspell
   max-issues-per-linter: 0
   max-same-issues: 0
   new-from-rev: master
