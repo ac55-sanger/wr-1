@@ -1,27 +1,26 @@
 /*******************************************************************************
  * Copyright (c) 2020 Genome Research Ltd.
  *
- * Authors: Ashwini Chhipa <ac55@sanger.ac.uk>
+ * Author: Ashwini Chhipa <ac55@sanger.ac.uk>
  *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  ******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ ******************************************************************************/
 
 package internal
 
@@ -37,6 +36,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// memIssue1 is the directory containing wrong memory info.
+// testdata/linux/virtualmemory/issue1/proc/meminfo .
 const memIssue1 string = "issue1"
 
 func TestUtilsFuncs(t *testing.T) {
@@ -122,11 +123,11 @@ func TestUtilsFuncs(t *testing.T) {
 		home, herr := os.UserHomeDir()
 		So(herr, ShouldEqual, nil)
 		filepth := filepath.Join(home, "testing_absolute_path.text")
-		file, err := os.Create(filepth)
+		_, err := os.Create(filepth)
 		So(err, ShouldEqual, nil)
-		defer file.Close()
 
 		So(TildaToHome("~/testing_absolute_path.text"), ShouldEqual, filepth)
+		defer os.Remove(filepth)
 	})
 
 	Convey("Given a path to a file check it's content", t, func() {
@@ -140,6 +141,7 @@ func TestUtilsFuncs(t *testing.T) {
 
 		file, err := os.Create(filepth)
 		So(err, ShouldEqual, nil)
+
 		wrtn, err := file.WriteString("hello")
 		So(err, ShouldEqual, nil)
 		fmt.Printf("wrote %d bytes\n", wrtn)
@@ -151,11 +153,13 @@ func TestUtilsFuncs(t *testing.T) {
 		content, err = PathToContent("random.txt")
 		So(content, ShouldEqual, "")
 		So(err, ShouldNotBeNil)
+
+		defer os.Remove(filepth)
 	})
 
 	Convey("It can get the virtual memory of the system in MB", t, func() {
-		if runtime.GOOS == "solaris" {
-			t.Skip("Only .Total is supported on Solaris")
+		if runtime.GOOS != "linux" {
+			t.Skip("skipping test; test coverage is only for linux machines.")
 		}
 
 		memStat, err := ProcMeminfoMBs()
@@ -164,19 +168,18 @@ func TestUtilsFuncs(t *testing.T) {
 
 		totalSysMem, err := unix.SysctlUint64("hw.memsize")
 		So(err, ShouldBeNil)
+
 		So(convert.BytesToMB(totalSysMem), ShouldEqual, memStat)
 
 		Convey("not with the wrong test data in linux", func() {
-			if runtime.GOOS == "linux" {
-				origProc := os.Getenv("HOST_PROC")
-				defer os.Setenv("HOST_PROC", origProc)
+			origProc := os.Getenv("HOST_PROC")
+			defer os.Setenv("HOST_PROC", origProc)
 
-				// set HOST_PROC to testdata for wrong meminfo
-				os.Setenv("HOST_PROC", filepath.Join("testdata/linux/virtualmemory/", memIssue1, "proc"))
-				memWStat, errw := ProcMeminfoMBs()
-				So(memWStat, ShouldEqual, 0)
-				So(errw, ShouldNotBeNil)
-			}
+			// set HOST_PROC to testdata for wrong meminfo
+			os.Setenv("HOST_PROC", filepath.Join("testdata/linux/virtualmemory/", memIssue1, "proc"))
+			memWStat, errw := ProcMeminfoMBs()
+			So(memWStat, ShouldEqual, 0)
+			So(errw, ShouldNotBeNil)
 		})
 	})
 }
