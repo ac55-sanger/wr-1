@@ -1,3 +1,27 @@
+/*******************************************************************************
+ * Copyright (c) 2020 Genome Research Ltd.
+ *
+ * Author: Sendu Bala <sb10@sanger.ac.uk>, Ashwini Chhipa <ac55@sanger.ac.uk>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ ******************************************************************************/
+
 package internal
 
 import (
@@ -17,44 +41,58 @@ import (
 )
 
 const (
-	validFor                   = 365 * 24 * time.Hour
-	certFileFlags  int         = os.O_RDWR | os.O_CREATE | os.O_TRUNC
-	certMode       os.FileMode = 0666
-	serverKeyFlags int         = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	serverKeyMode  os.FileMode = 0600
+	// validFor is time duration of certificate validity.
+	validFor = 365 * 24 * time.Hour
+
+	// certFileFlags are flags for certificate files.
+	certFileFlags int = os.O_RDWR | os.O_CREATE | os.O_TRUNC
+
+	// certMode is the file mode for certificate file.
+	certMode os.FileMode = 0666
+
+	// serverKeyFlags are flags for server key file.
+	serverKeyFlags int = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+
+	// serverKeyMode is the file mode for server key file.
+	serverKeyMode os.FileMode = 0600
 )
 
-// Err* constants are found in our returned CertError under err.Type, so you can
-// cast and check if it's a certain type of error.
+// CertificateErr is supplied to CertError to define the certain type of
+// certificate related errors.
+type CertificateErr string
+
+// ErrCert* are the reasons related to certificates.
 const (
-	ErrParseCert    = "could not be parsed"
-	ErrExpiredCert  = "is expired"
-	ErrCreateCert   = "could not be created"
-	ErrExistsCert   = "already exists"
-	ErrEncodeCert   = "could not encode"
-	ErrNotFoundCert = "cert could not be found"
+	ErrCertParse    CertificateErr = "could not be parsed"
+	ErrCertCreate   CertificateErr = "could not be created"
+	ErrCertExists   CertificateErr = "already exists"
+	ErrCertEncode   CertificateErr = "could not encode"
+	ErrCertNotFound CertificateErr = "cert could not be found"
 )
 
 // CertError records a certificate-related error.
 type CertError struct {
-	Type string // ErrParseCert or ErrExpiredCert
-	Path string // path to the certificate file
-	Err  error  // In the case of ErrParseCert, the parsing error
+	Type CertificateErr // one of our CertificateErr constants
+	Path string         // path to the certificate file
+	Err  error          // In the case of ErrParseCert, the parsing error
 }
 
-func (e CertError) Error() string {
-	msg := e.Path + " " + e.Type
-	if e.Err != nil {
-		msg += " [" + e.Err.Error() + "]"
+// Error returns an error with a reason related to certificate and its path.
+func (ce *CertError) Error() string {
+	msg := ce.Path + " " + string(ce.Type)
+	if ce.Err != nil {
+		msg += " [" + ce.Err.Error() + "]"
 	}
 
 	return msg
 }
 
+// NumberError records a number related error.
 type NumberError struct {
 	Err error
 }
 
+// Error returns a number related error.
 func (n *NumberError) Error() string {
 	return fmt.Sprintf("failed to generate serial number: %s", n.Err)
 }
@@ -97,19 +135,19 @@ func GenerateCerts(caFile, serverPemFile, serverKeyFile, domain string,
 	return err
 }
 
-// checkIfCertsExist checks if any of the files exist, if yes then returns
-// error.
+// checkIfCertsExist checks if any of the certificate files exist, if yes then
+// returns error.
 func checkIfCertsExist(certFiles []string) error {
 	for _, cFile := range certFiles {
 		if _, err := os.Stat(cFile); err == nil {
-			return &CertError{Type: ErrExistsCert, Path: cFile, Err: err}
+			return &CertError{Type: ErrCertExists, Path: cFile, Err: err}
 		}
 	}
 
 	return nil
 }
 
-// Generate root and server certificate.
+// generateCertificates generates root and server certificates.
 func generateCertificates(caFile, domain string, rootKey *rsa.PrivateKey, serverKey *rsa.PrivateKey,
 	serverPemFile string, randReader io.Reader, fileFlags int) error {
 	// create templates for root and server certificates.
@@ -125,6 +163,7 @@ func generateCertificates(caFile, domain string, rootKey *rsa.PrivateKey, server
 		rootServerTemplates[i] = certTmplt
 	}
 
+	// generate server cert
 	rootServerTemplates[0].IsCA = true
 	rootServerTemplates[0].KeyUsage |= x509.KeyUsageCertSign
 
@@ -189,7 +228,7 @@ func createCertFromTemplate(template, parentCert *x509.Certificate, pubKey inter
 	parentPvtKey interface{}, randReader io.Reader) ([]byte, error) {
 	certDER, err := x509.CreateCertificate(randReader, template, parentCert, pubKey, parentPvtKey)
 	if err != nil {
-		return nil, CertError{Type: ErrCreateCert, Err: err}
+		return nil, &CertError{Type: ErrCertCreate, Err: err}
 	}
 
 	return certDER, nil
@@ -201,7 +240,7 @@ func parseCertAndSavePEM(certByte []byte, certPath string, flags int) (*x509.Cer
 	// parse the resulting certificate so we can use it again
 	cert, err := x509.ParseCertificate(certByte)
 	if err != nil {
-		return nil, CertError{Type: ErrParseCert, Path: certPath, Err: err}
+		return nil, &CertError{Type: ErrCertParse, Path: certPath, Err: err}
 	}
 
 	block := &pem.Block{Type: "CERTIFICATE", Bytes: certByte}
@@ -217,12 +256,12 @@ func parseCertAndSavePEM(certByte []byte, certPath string, flags int) (*x509.Cer
 func encodeAndSavePEM(block *pem.Block, certPath string, flags int, mode os.FileMode) error {
 	certOut, err := os.OpenFile(certPath, flags, mode)
 	if err != nil {
-		return CertError{Type: ErrCreateCert, Path: certPath, Err: err}
+		return &CertError{Type: ErrCertCreate, Path: certPath, Err: err}
 	}
 
 	err = pem.Encode(certOut, block)
 	if err != nil {
-		return CertError{Type: ErrEncodeCert, Path: certPath, Err: err}
+		return &CertError{Type: ErrCertEncode, Path: certPath, Err: err}
 	}
 
 	err = certOut.Close()
@@ -270,14 +309,14 @@ func CertExpiry(certFile string) (time.Time, error) {
 
 	cert := findPEMBlockAndReturnCert(certPEMBlock)
 	if len(cert.Certificate) == 0 {
-		return time.Now(), CertError{Type: ErrNotFoundCert, Path: certFile}
+		return time.Now(), &CertError{Type: ErrCertNotFound, Path: certFile}
 	}
 
 	// We don't need to parse the public key for TLS, but we so do anyway
 	// to check that it looks sane and matches the private key.
 	x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 	if err != nil {
-		return time.Now(), CertError{Type: ErrParseCert, Path: certFile, Err: err}
+		return time.Now(), &CertError{Type: ErrCertParse, Path: certFile, Err: err}
 	}
 
 	return x509Cert.NotAfter, nil

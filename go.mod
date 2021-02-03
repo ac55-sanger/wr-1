@@ -18,7 +18,8 @@ require (
 	github.com/ricochet2200/go-disk-usage v0.0.0-20150921141558-f0d1b743428f
 	github.com/rs/xid v1.2.1
 	github.com/sb10/l15h v0.0.0-20170510122137-64c488bf8e22
+	github.com/shirou/gopsutil/v3 v3.21.1
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/sys v0.0.0-20200918174421-af09f7315aff // indirect
+	golang.org/x/sys v0.0.0-20201024232916-9f70ab9862d5
 )
