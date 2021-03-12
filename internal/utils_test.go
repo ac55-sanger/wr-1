@@ -25,7 +25,9 @@
 package internal
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -181,5 +183,28 @@ func TestUtilsFuncs(t *testing.T) {
 			So(memWStat, ShouldEqual, 0)
 			So(errw, ShouldNotBeNil)
 		})
+	})
+
+	Convey("It can get the present working directory", t, func() {
+		ctx := context.Background()
+		pWD := GetPWD(ctx)
+		So(pWD, ShouldNotBeNil)
+
+		// change the directory and check
+		dir, err := ioutil.TempDir("", "wr_filepath_test")
+		So(err, ShouldBeNil)
+		err = os.Chdir(dir)
+		So(err, ShouldBeNil)
+		defer func() {
+			err = os.Chdir(pWD)
+			So(err, ShouldBeNil)
+		}()
+
+		pWD = GetPWD(ctx)
+		lstatDir, err := os.Lstat(dir)
+		So(err, ShouldBeNil)
+		lstatPWD, err := os.Lstat(pWD)
+		So(err, ShouldBeNil)
+		So(lstatDir.Name(), ShouldEqual, lstatPWD.Name())
 	})
 }

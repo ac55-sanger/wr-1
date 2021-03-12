@@ -30,6 +30,7 @@ package clog
 import (
 	"bytes"
 	"context"
+	"os"
 
 	log "github.com/inconshreveable/log15"
 	"github.com/sb10/l15h"
@@ -151,4 +152,17 @@ func Error(ctx context.Context, msg string, args ...interface{}) {
 // the error level. A stack trace is included.
 func Crit(ctx context.Context, msg string, args ...interface{}) {
 	logger(ctx).Crit(msg, args...)
+}
+
+// Fatal logs the given message with context and args to the global logger at
+// the error level and exits out. A stack trace is included.
+func Fatal(ctx context.Context, msg string, args ...interface{}) {
+	args = append(args, "fatal", true)
+	logger(ctx).Crit(msg, args...)
+
+	if os.Getenv("FATAL_EXIT_TEST") == "1" {
+		return
+	}
+
+	os.Exit(1)
 }

@@ -59,6 +59,9 @@ issues:
     - path: cert.go
       linters:
         - misspell
+    - path: config.go
+      linters:
+        - exhaustive
   max-issues-per-linter: 0
   max-same-issues: 0
   new-from-rev: master

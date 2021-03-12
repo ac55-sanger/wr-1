@@ -27,6 +27,7 @@ package internal
 // this file has general utility functions.
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,6 +36,7 @@ import (
 	"strings"
 
 	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/wtsi-ssg/wr/clog"
 	"github.com/wtsi-ssg/wr/math/convert"
 )
 
@@ -226,4 +228,14 @@ func TildaToHome(path string) string {
 	}
 
 	return path
+}
+
+// GetPWD returns the present working directory.
+func GetPWD(ctx context.Context) string {
+	pwd, err := os.Getwd()
+	if err != nil {
+		clog.Fatal(ctx, fmt.Sprintf("%s", err))
+	}
+
+	return pwd
 }
