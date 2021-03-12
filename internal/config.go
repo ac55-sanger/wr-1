@@ -172,7 +172,7 @@ func ConfigLoadFromParentDir(ctx context.Context, deployment string) *Config {
 	return mergeAllConfigs(ctx, uid, deployment, pwd, true)
 }
 
-// ConfigLoadFromParentDir loads and returns the config from a non-parent directory.
+// ConfigLoadFromNonParentDir loads and returns the config from a non-parent directory.
 func ConfigLoadFromNonParentDir(ctx context.Context, deployment string) *Config {
 	pwd := GetPWD(ctx)
 
@@ -240,7 +240,7 @@ func mergeDefaultAndEnvVarsConfigs(ctx context.Context) *Config {
 	return configDef
 }
 
-// getDefaultConfig loads and return the default configs.
+// loadDefaultConfig loads and return the default configs.
 func loadDefaultConfig(ctx context.Context) *Config {
 	// because we want to know the source of every value, we can't take
 	// advantage of configor.Load() being able to take all env vars and config
@@ -407,7 +407,7 @@ func (c *Config) adjustConfigProperties(ctx context.Context, uid int, deployment
 	c.setManagerPort(ctx, uid)
 }
 
-// convRelativeToAbsManagerPath converts the possible relative paths in Manager_*_file to
+// convRelativeToAbsManagerPaths converts the possible relative paths in Manager_*_file to
 // abs paths in ManagerDir.
 func (c *Config) convRelativeToAbsManagerPaths() {
 	if !filepath.IsAbs(c.ManagerPidFile) {
@@ -423,7 +423,7 @@ func (c *Config) convRelativeToAbsManagerPaths() {
 	}
 }
 
-// convRelativeToAbsManagerPathForCert converts the possible relative paths in  to
+// convRelativeToAbsManagerPathForCert converts the possible relative paths for certificate files to
 // abs paths in ManagerDir.
 func (c *Config) convRelativeToAbsManagerPathForCert() {
 	if !filepath.IsAbs(c.ManagerCAFile) {
@@ -443,6 +443,8 @@ func (c *Config) convRelativeToAbsManagerPathForCert() {
 	}
 }
 
+// convRelativeToAbsManagerPathForCert converts the possible relative paths for DB files to
+// abs paths in ManagerDir.
 func (c *Config) convRelativeToAbsManagerPathForDBFiles() {
 	if !filepath.IsAbs(c.ManagerDBFile) {
 		c.ManagerDBFile = filepath.Join(c.ManagerDir, c.ManagerDBFile)
@@ -468,7 +470,7 @@ func (c *Config) setManagerPort(ctx context.Context, uid int) {
 	}
 }
 
-// Calculate a port number that will be unique to this user, deployment and
+// calculatePort calculates a port number that will be unique to this user, deployment and
 // ptype ("cli" or "webi").
 func calculatePort(ctx context.Context, uid int, deployment string, ptype string) string {
 	// get the minimum port number
